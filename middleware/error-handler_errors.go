@@ -15,7 +15,7 @@ var Panic = &types.ServiceError{
 // received objects implementing the Error() interface and no other errors were
 // raised during the handling of the request
 var InternalError = &types.ServiceError{
-	Type:   "https://pkg.go.dev/builtin#panic",
+	Type:   "https://www.rfc-editor.org/rfc/rfc9110#section-15.6.1",
 	Status: 500,
 	Title:  "Internal Server Error",
 	Detail: "The service encountered an internal error during the handling of your request",
@@ -24,7 +24,7 @@ var InternalError = &types.ServiceError{
 // InvalidTypeProvided is used in the case that an unsupported type has been
 // passed to the ErrorHandler
 var InvalidTypeProvided = &types.ServiceError{
-	Type:   "https://pkg.go.dev/builtin#panic",
+	Type:   "https://www.rfc-editor.org/rfc/rfc9110#section-16.2",
 	Status: 999,
 	Title:  "Invalid Error Supplied",
 	Detail: "The content provided to the error handler is invalid",
