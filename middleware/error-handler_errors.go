@@ -29,3 +29,11 @@ var InvalidTypeProvided = &types.ServiceError{
 	Title:  "Invalid Error Supplied",
 	Detail: "The content provided to the error handler is invalid",
 }
+
+// NotFound is an error used in the NotFoundError handler
+var NotFound = types.ServiceError{
+	Type:   "https://www.rfc-editor.org/rfc/rfc9110#section-15.5.5",
+	Status: 404,
+	Title:  "Route Not Found",
+	Detail: "The requested route was not found. Please check your request and ensure that the route is correctly set up in the service",
+}

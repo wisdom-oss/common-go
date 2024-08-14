@@ -83,3 +83,7 @@ func ErrorHandler(next http.Handler) http.Handler {
 	}
 	return http.HandlerFunc(fn)
 }
+
+func NotFoundError(w http.ResponseWriter, _ *http.Request) {
+	NotFound.Send(w)
+}
