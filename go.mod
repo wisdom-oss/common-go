@@ -2,6 +2,10 @@ module github.com/wisdom-oss/common-go
 
 go 1.22.3
 
+retract v1.0.0
+retract v1.0.1
+retract v1.0.2
+
 require (
 	github.com/iancoleman/strcase v0.3.0
 	github.com/lestrrat-go/jwx/v2 v2.1.1

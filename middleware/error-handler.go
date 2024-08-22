@@ -74,10 +74,12 @@ func ErrorHandler(next http.Handler) http.Handler {
 				serviceErr.Send(w)
 				return
 			}
-			serviceErr = InternalError
-			serviceErr.Errors = errs
-			serviceErr.Send(w)
-			return
+			if len(errs) > 0 {
+				serviceErr = InternalError
+				serviceErr.Errors = errs
+				serviceErr.Send(w)
+				return
+			}
 		}()
 		next.ServeHTTP(w, r.WithContext(ctx))
 	}
