@@ -3,6 +3,7 @@ package middleware
 import (
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -185,6 +186,12 @@ func TestErrorHandler_NoError(t *testing.T) {
 
 	if res.StatusCode != http.StatusOK {
 		t.Errorf("response status is incorrect, got %d, expected, %d", res.StatusCode, http.StatusOK)
+	}
+
+	expected := "test"
+	reponseContents, _ := io.ReadAll(res.Body)
+	if string(reponseContents) != expected {
+		t.Errorf("response content is incorrect, got '%s', expected '%s'", string(reponseContents), expected)
 	}
 
 }
