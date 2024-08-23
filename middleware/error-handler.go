@@ -42,13 +42,25 @@ func ErrorHandler(next http.Handler) http.Handler {
 
 		// defer the handling of errors and panics until the next handler has exited
 		defer func() {
-			if p := recover(); p != nil {
-				if p == http.ErrAbortHandler {
-					panic(p)
-					return
+			var panics []any
+			for {
+				p := recover()
+				if p != nil {
+					if p == http.ErrAbortHandler {
+						panic(p)
+						return
+					}
+					panics = append(panics, p)
+				} else {
+					break
 				}
+			}
+			if len(panics) > 0 {
 				err := Panic
-				err.Errors = append(err.Errors, fmt.Errorf("%v", p))
+				err.Errors = []error{}
+				for _, p := range panics {
+					err.Errors = append(err.Errors, fmt.Errorf("%v", p))
+				}
 				err.Send(w)
 				return
 			}
