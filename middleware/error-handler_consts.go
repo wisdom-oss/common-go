@@ -1,5 +1,5 @@
 package middleware
 
-import "github.com/thanhpk/randstr"
+import internal "github.com/wisdom-oss/common-go/v2/internal/error-handler"
 
-var ErrorChannelName = randstr.Hex(16)
+var ErrorChannelName = internal.ErrorChannelName

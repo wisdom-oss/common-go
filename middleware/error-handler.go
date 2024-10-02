@@ -6,10 +6,15 @@ import (
 	"math"
 	"net/http"
 
-	"github.com/wisdom-oss/common-go/types"
+	"github.com/gin-gonic/gin"
+
+	errorHandler "github.com/wisdom-oss/common-go/v2/internal/error-handler"
+	"github.com/wisdom-oss/common-go/v2/types"
 )
 
-// ErrorHandler is used to inject a channel into the request's context to enable
+type ErrorHandler struct{}
+
+// Handler is used to inject a channel into the request's context to enable
 // a deferred handling of errors that may occur during handling of a request.
 // The channel will be inserted using the ErrorChannelName variable which is
 // generated automatically to circumvent possible name clashes.
@@ -33,7 +38,7 @@ import (
 // [types.ServiceError] objects.
 // Using other types will result in a InvalidTypeProvided error being sent
 // instead using the undocumented HTTP Status Code 999.
-func ErrorHandler(next http.Handler) http.Handler {
+func (h ErrorHandler) Handler(next http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		// create an error input which allows multiple errors to be collected
 		errorInput := make(chan interface{}, math.MaxUint16)
@@ -56,12 +61,12 @@ func ErrorHandler(next http.Handler) http.Handler {
 				}
 			}
 			if len(panics) > 0 {
-				err := Panic
+				err := errorHandler.Panic
 				err.Errors = []error{}
 				for _, p := range panics {
 					err.Errors = append(err.Errors, fmt.Errorf("%v", p))
 				}
-				err.Send(w)
+				err.Emit(w)
 				return
 			}
 			var errs []error
@@ -77,19 +82,19 @@ func ErrorHandler(next http.Handler) http.Handler {
 						serviceErr = &err
 					}
 				default:
-					InvalidTypeProvided.Send(w)
+					errorHandler.InvalidTypeProvided.Emit(w)
 					return
 				}
 			}
 			if serviceErr != nil {
 				serviceErr.Errors = errs
-				serviceErr.Send(w)
+				serviceErr.Emit(w)
 				return
 			}
 			if len(errs) > 0 {
-				serviceErr = InternalError
+				serviceErr = errorHandler.InternalError
 				serviceErr.Errors = errs
-				serviceErr.Send(w)
+				serviceErr.Emit(w)
 				return
 			}
 		}()
@@ -98,6 +103,25 @@ func ErrorHandler(next http.Handler) http.Handler {
 	return http.HandlerFunc(fn)
 }
 
-func NotFoundError(w http.ResponseWriter, _ *http.Request) {
-	NotFound.Send(w)
+// Gin catches all errors which occurred during the execution of a
+// request and attaches them to the response object.
+// If any errors are set using (gin.Context).Error(err) the handler aborts the
+// context if that didn't already happen
+func (h ErrorHandler) Gin(c *gin.Context) {
+	c.Next()
+	var errors []types.ServiceError
+	for _, err := range c.Errors {
+		errors = append(errors, types.ServiceError{
+			Type:   "https://www.rfc-editor.org/rfc/rfc9110#section-15.6.1",
+			Status: 500,
+			Title:  "Internal Server Error",
+			Detail: "The service encountered an internal error during the handling of your request",
+			Errors: []error{err.Err},
+		})
+	}
+	if len(errors) > 0 {
+		c.Abort()
+		c.Header("Content-Type", "application/problem+json; charset=utf-8")
+		c.JSON(500, errors)
+	}
 }
