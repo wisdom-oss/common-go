@@ -1,6 +1,6 @@
-package middleware
+package validateJWT
 
-import "github.com/wisdom-oss/common-go/types"
+import "github.com/wisdom-oss/common-go/v2/types"
 
 // ErrMissingAuthorizationHeader is returned if the request did not contain
 // the `Authorization` header
@@ -74,13 +74,22 @@ var ErrJWTInvalidIssuer = types.ServiceError{
 	Detail: "The JSON Web Token used to access this resource has not been issued by the correct issuer. Please check your authentication provider.",
 }
 
-// ErrJWTNoGroups is returned if the JWT did not contain the group claim and
+// ErrJWTNoScopeSet is returned if the JWT did not contain the group claim and
 // therefore is not usable for the service
-var ErrJWTNoGroups = types.ServiceError{
+var ErrJWTNoScopeSet = types.ServiceError{
 	Type:   "https://www.rfc-editor.org/rfc/rfc9110#section-15.5.1",
 	Status: 400,
-	Title:  "JSON Web Token No Groups Claim",
-	Detail: "The JSON Web Token used to access this resource did not contain the required `groups` claim",
+	Title:  "No Scopes Set",
+	Detail: "The JSON Web Token used to access this resource does not contain a scope to identify the permissions of the token",
+}
+
+// ErrJWTInvalidScopeType is returned if the JWT did not contain the group claim and
+// therefore is not usable for the service
+var ErrJWTInvalidScopeType = types.ServiceError{
+	Type:   "https://www.rfc-editor.org/rfc/rfc9110#section-15.5.1",
+	Status: 400,
+	Title:  "No Scopes Set",
+	Detail: "The JSON Web Token used to access this resource does not contain a scope to identify the permissions of the token",
 }
 
 // Forbidden is returned if the user is authenticated but not authorized to

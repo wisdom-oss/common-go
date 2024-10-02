@@ -1,6 +1,6 @@
-package middleware
+package errorHandler
 
-import "github.com/wisdom-oss/common-go/types"
+import "github.com/wisdom-oss/common-go/v2/types"
 
 // Panic is the base types.ServiceError used if the ErrorHandler catches a panic
 // during the handling of a request.
