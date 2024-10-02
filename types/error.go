@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"strings"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/iancoleman/strcase"
 )
 
-// ErrorContentType is used as the content type when sending an error response
+// ErrorContentType is used as the media type when sending an error response
 const ErrorContentType = "application/problem+json; charset=utf-8"
 
 const tagFormattingString = `tag:%s,%s:%s:%d`
@@ -62,26 +62,39 @@ type ServiceError struct {
 }
 
 // SetInstance generates a URI of the TAG format containing a unique identifier
-// for this error and assignes it to the Instance field
+// for this error and assigns it to the Instance field
 func (se *ServiceError) SetInstance() error {
-	hostname, err := os.Hostname()
-	if err != nil {
-		return err
+	if se.Host == "" {
+		hostname, err := os.Hostname()
+		if err != nil {
+			return err
+		}
+		se.Host = hostname
 	}
 	ts := time.Now()
-	se.Instance = fmt.Sprintf(tagFormattingString, hostname, ts.Format(`2006-01-02`), strcase.ToCamel(se.Title), ts.Unix())
+	se.Instance = fmt.Sprintf(tagFormattingString, se.Host, ts.Format(`2006-01-02`), strcase.ToCamel(se.Title), ts.Unix())
 	return nil
 }
 
-// Send transmits the error using the supplied http.ResponseWriter
-func (se *ServiceError) Send(w http.ResponseWriter) {
-	if se.Host == "" || strings.TrimSpace(se.Host) == "" {
-		se.Host, _ = os.Hostname()
+// Emit allows sending the error contained as a response.
+//
+// The emitter may currently be one of the following types:
+//   - http.ResponseWriter
+//   - *gin.Context
+//
+// If an unknown or unsupported emitter is supplied, the function will panic
+func (se ServiceError) Emit(emitter any) {
+	switch emitter.(type) {
+	case http.ResponseWriter:
+		se.emit_responseWriter(emitter.(http.ResponseWriter))
+	case *gin.Context:
+		se.emit_gin(emitter.(*gin.Context))
+	default:
+		panic(fmt.Sprintf("unknown error emitter. expected one of: http.ResponseWriter, *gin.Context. got: %T", emitter))
 	}
-	if se.Instance == "" || strings.TrimSpace(se.Instance) == "" {
-		_ = se.SetInstance()
-	}
+}
 
+func (se *ServiceError) emit_responseWriter(w http.ResponseWriter) {
 	w.Header().Set("Content-Type", ErrorContentType)
 	w.WriteHeader(int(se.Status))
 
@@ -91,8 +104,15 @@ func (se *ServiceError) Send(w http.ResponseWriter) {
 	}
 }
 
+func (se *ServiceError) emit_gin(c *gin.Context) {
+	c.Header("Content-Type", ErrorContentType)
+	c.JSON(int(se.Status), se)
+}
+
 // MarshalJSON is used to change the serialization of the Errors
 func (se ServiceError) MarshalJSON() ([]byte, error) {
+	_ = se.SetInstance()
+	se.Host, _ = os.Hostname()
 	output := struct {
 		Type     string   `json:"type"`
 		Status   int      `json:"status"`
@@ -113,6 +133,36 @@ func (se ServiceError) MarshalJSON() ([]byte, error) {
 		output.Errors = append(output.Errors, err.Error())
 	}
 	return json.Marshal(output)
+}
+
+func (se *ServiceError) UnmarshalJSON(src []byte) error {
+	var input struct {
+		Type     string   `json:"type"`
+		Status   int      `json:"status"`
+		Title    string   `json:"title"`
+		Detail   string   `json:"detail"`
+		Instance string   `json:"instance,omitempty"`
+		Errors   []string `json:"errors,omitempty"`
+		Host     string   `json:"host"`
+	}
+	err := json.Unmarshal(src, &input)
+	if err != nil {
+		return err
+	}
+	var errors []error
+	for _, err := range input.Errors {
+		errors = append(errors, fmt.Errorf(err))
+	}
+	*se = ServiceError{
+		Type:     input.Type,
+		Status:   uint(input.Status),
+		Title:    input.Title,
+		Detail:   input.Detail,
+		Errors:   errors,
+		Host:     input.Host,
+		Instance: input.Instance,
+	}
+	return nil
 }
 
 // Equals checks if the current WISdoMError object is equal to the provided
@@ -138,18 +188,17 @@ func (se ServiceError) MarshalJSON() ([]byte, error) {
 //	equal := err1.Equals(*err2)
 //	fmt.Println(equal) // Output: true
 func (se *ServiceError) Equals(other ServiceError) bool {
-	equals := true
 	if se.Type != other.Type {
-		equals = false
+		return false
 	}
 	if se.Status != other.Status {
-		equals = false
+		return false
 	}
 	if se.Title != other.Title {
-		equals = false
+		return false
 	}
 	if se.Detail != other.Detail {
-		equals = false
+		return false
 	}
-	return equals
+	return true
 }
