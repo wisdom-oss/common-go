@@ -26,7 +26,7 @@ func Fuzz_RequireScope_stdlib_NoValidator(f *testing.F) {
 			nextFn := func(w http.ResponseWriter, r *http.Request) {
 				w.Write([]byte("success"))
 			}
-			scopeCheck := RequireScope("correct-scope", types.ScopeWrite)
+			scopeCheck := RequireScope{}.Handler("correct-scope", types.ScopeWrite)
 			return scopeCheck(http.HandlerFunc(nextFn))
 		}())
 
@@ -67,7 +67,7 @@ func Test_RequireScope_stdlib_InvalidScope(t *testing.T) {
 		nextFn := func(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte("success"))
 		}
-		scopeCheck := RequireScope("correct-scope", types.ScopeWrite)
+		scopeCheck := RequireScope{}.Handler("correct-scope", types.ScopeWrite)
 		return validator.Handler(scopeCheck(http.HandlerFunc(nextFn)))
 	}())
 	serializer := jwt.NewSerializer()
@@ -112,7 +112,7 @@ func Test_RequireScope_stdlib_InvalidLevel(t *testing.T) {
 		nextFn := func(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte("success"))
 		}
-		scopeCheck := RequireScope("correct-scope", types.ScopeWrite)
+		scopeCheck := RequireScope{}.Handler("correct-scope", types.ScopeWrite)
 		return validator.Handler(scopeCheck(http.HandlerFunc(nextFn)))
 	}())
 	serializer := jwt.NewSerializer()
@@ -157,7 +157,7 @@ func Test_RequireScope_stdlib_AdministratorOverrride(t *testing.T) {
 		nextFn := func(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte("success"))
 		}
-		scopeCheck := RequireScope("correct-scope", types.ScopeWrite)
+		scopeCheck := RequireScope{}.Handler("correct-scope", types.ScopeWrite)
 		return validator.Handler(scopeCheck(http.HandlerFunc(nextFn)))
 	}())
 	serializer := jwt.NewSerializer()
@@ -191,7 +191,7 @@ func Test_RequireScope_stdlib_CorrectData(t *testing.T) {
 		nextFn := func(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte("success"))
 		}
-		scopeCheck := RequireScope("correct-scope", types.ScopeWrite)
+		scopeCheck := RequireScope{}.Handler("correct-scope", types.ScopeWrite)
 		return validator.Handler(scopeCheck(http.HandlerFunc(nextFn)))
 	}())
 	serializer := jwt.NewSerializer()

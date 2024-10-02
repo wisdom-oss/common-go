@@ -23,7 +23,7 @@ func Fuzz_RequireScope_gin_NoValidator(f *testing.F) {
 	f.Add("nope")
 	f.Fuzz(func(t *testing.T, scopeName string) {
 		r := gin.New()
-		r.Use(RequireScopeGin(scopeName, types.ScopeRead)).GET("/", func(context *gin.Context) {
+		r.Use(RequireScope{}.Gin(scopeName, types.ScopeRead)).GET("/", func(context *gin.Context) {
 			context.String(200, "success")
 		})
 
@@ -61,7 +61,7 @@ func Test_RequireScope_gin_InvalidScope(t *testing.T) {
 	_ = validator.Configure("wisdom-tests", "", true)
 	r := gin.New()
 	r.Use(validator.GinHandler)
-	r.Handle("GET", "/", RequireScopeGin("correct-scope", types.ScopeWrite), func(context *gin.Context) {
+	r.Handle("GET", "/", RequireScope{}.Gin("correct-scope", types.ScopeWrite), func(context *gin.Context) {
 		context.String(200, "success")
 	})
 	serializer := jwt.NewSerializer()
@@ -103,7 +103,7 @@ func Test_RequireScope_gin_InvalidLevel(t *testing.T) {
 	_ = validator.Configure("wisdom-tests", "", true)
 	r := gin.New()
 	r.Use(validator.GinHandler)
-	r.Handle("GET", "/", RequireScopeGin("correct-scope", types.ScopeWrite), func(context *gin.Context) {
+	r.Handle("GET", "/", RequireScope{}.Gin("correct-scope", types.ScopeWrite), func(context *gin.Context) {
 		context.String(200, "success")
 	})
 	serializer := jwt.NewSerializer()
@@ -145,7 +145,7 @@ func Test_RequireScope_gin_AdministratorOverrride(t *testing.T) {
 	_ = validator.Configure("wisdom-tests", "", true)
 	r := gin.New()
 	r.Use(validator.GinHandler)
-	r.Handle("GET", "/", RequireScopeGin("correct-scope", types.ScopeWrite), func(context *gin.Context) {
+	r.Handle("GET", "/", RequireScope{}.Gin("correct-scope", types.ScopeWrite), func(context *gin.Context) {
 		context.String(200, "success")
 	})
 	serializer := jwt.NewSerializer()
@@ -176,7 +176,7 @@ func Test_RequireScope_gin_CorrectData(t *testing.T) {
 	_ = validator.Configure("wisdom-tests", "", true)
 	r := gin.New()
 	r.Use(validator.GinHandler)
-	r.Handle("GET", "/", RequireScopeGin("correct-scope", types.ScopeWrite), func(context *gin.Context) {
+	r.Handle("GET", "/", RequireScope{}.Gin("correct-scope", types.ScopeWrite), func(context *gin.Context) {
 		context.String(200, "success")
 	})
 	serializer := jwt.NewSerializer()
