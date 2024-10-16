@@ -5,15 +5,6 @@
 <p>🪢 commonly used middlewares and types in WISdoM microservices</p>
 </div>
 
-> [!WARNING]
-> This repository merges the following repositories into one and extends the
-> functionality of some parts:
->   - https://github.com/wisdom-oss/microservice-middlewares
->   - https://github.com/wisdom-oss/commonTypes
-> 
-> However, this repository is not a drop-in replacement as it may require a
-> reconfiguration of your existing codebase to be functional with the new 
-> features and functions
 
 This repository contains a collection of common middlewares and types that
 are used by the microservices in the WISdoM platform.

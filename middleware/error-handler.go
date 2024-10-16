@@ -119,8 +119,7 @@ func (h ErrorHandler) Gin(c *gin.Context) {
 			Errors: []error{err.Err},
 		})
 	}
-	if len(errors) > 0 {
-		c.Abort()
+	if len(errors) > 0 && c.IsAborted() {
 		c.Header("Content-Type", "application/problem+json; charset=utf-8")
 		c.JSON(500, errors)
 	}
