@@ -175,6 +175,7 @@ func (v *JWTValidator) GinHandler(c *gin.Context) {
 	c.Set(internal.KeyTokenValidated, true)
 	c.Set(internal.KeyPermissions, scopes)
 	c.Set(internal.KeyAdministrator, slices.Contains(scopes, internal.ScopeAdministrator))
+	c.Set(internal.KeySubject, credential.Subject())
 }
 
 func (v *JWTValidator) Handler(next http.Handler) http.Handler {
@@ -229,6 +230,7 @@ func (v *JWTValidator) Handler(next http.Handler) http.Handler {
 		ctx = context.WithValue(ctx, internal.KeyTokenValidated, true)
 		ctx = context.WithValue(ctx, internal.KeyPermissions, scopes)
 		ctx = context.WithValue(ctx, internal.KeyAdministrator, slices.Contains(scopes, internal.ScopeAdministrator))
+		ctx = context.WithValue(ctx, internal.KeySubject, credential.Subject())
 		next.ServeHTTP(w, r.WithContext(ctx))
 	}
 	return http.HandlerFunc(fn)
