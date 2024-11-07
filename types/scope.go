@@ -1,5 +1,7 @@
 package types
 
+import "errors"
+
 type Scope uint8
 
 const (
@@ -22,4 +24,30 @@ func (s Scope) String() string {
 	default:
 		return "<unknown>"
 	}
+}
+
+func (s *Scope) Parse(input any) error {
+	var scope string
+	switch input.(type) {
+	case string:
+		scope = input.(string)
+	case []byte:
+		scope = string(input.([]byte))
+	default:
+		return errors.New("invalid input data type, expected []byte or string")
+	}
+
+	switch scope {
+	case "read":
+		*s = ScopeRead
+	case "write":
+		*s = ScopeWrite
+	case "delete":
+		*s = ScopeDelete
+	case "admin":
+		*s = ScopeAdmin
+	default:
+		return errors.New("unknown scope passed as input")
+	}
+	return nil
 }
