@@ -21,19 +21,14 @@ import (
 )
 
 var (
-	ErrDiscoveryFailure             = errors.New("oidc discovery failure")
-	ErrIssuerEmpty                  = errors.New("issuer is empty")
-	ErrIssuerUnsupportedScheme      = errors.New("oidc issuer has unsupported scheme")
-	ErrDiscoveryResponseParseFailed = errors.New("oidc discovery response parse failed")
-	ErrJWKSCacheRegisterFailed      = errors.New("jwks cache register failed")
-	ErrJWKSCacheRefreshFailed       = errors.New("mandatory jwks cache refresh failed")
-	ErrJWKSUriInvalid               = errors.New("jwks uri is not a valid uri")
-)
-
-var (
 	supportedSchemes = []string{"http", "https"}
 )
 
+// JWTValidator enables the gin router and the stdlib to validate a JWT passed
+// in the request headers.
+// It expects the OAuth 2.0 Bearer Token scheme as Authorization method.
+// To apply the validator, use either the GinHandler or Handler function
+// depending on the router you are using
 type JWTValidator struct {
 	// issuer contains the OAuth 2.0 issuer of the jwts
 	issuer string
@@ -51,6 +46,12 @@ type JWTValidator struct {
 	parserOptions []jwt.ParseOption
 }
 
+func (v *JWTValidator) AddParserOption(options ...jwt.ParseOption) {
+	v.parserOptions = append(v.parserOptions, options...)
+}
+
+// DiscoverAndConfigure uses the OpenID Connect discovery mechanism to discover
+// the required variables and uris and configures them accordingly
 func (v *JWTValidator) DiscoverAndConfigure(issuer string) error {
 	if strings.TrimSpace(issuer) == "" {
 		return ErrIssuerEmpty
@@ -89,6 +90,9 @@ func (v *JWTValidator) DiscoverAndConfigure(issuer string) error {
 	return v.Configure(issuer, jwksUri, false)
 }
 
+// Configure allows the manual configuration of an issuer and a JWKS uri
+// (used to validate JWTs) but allows using incorrect JWKS uris to handle manual
+// or missing JWKS
 func (v *JWTValidator) Configure(issuer string, jwksUri string, allowFaultyJWKSUri bool) error {
 	_, err := url.Parse(issuer)
 	if err != nil {
@@ -122,7 +126,24 @@ func (v *JWTValidator) Configure(issuer string, jwksUri string, allowFaultyJWKSU
 	return nil
 }
 
-func (v *JWTValidator) GinHandler(c *gin.Context) {
+// Handler is used to emit the correct handler method for using the middleware
+// in requests.
+// To get the correct handler function, please pass the router you are using
+// as the router parameter.
+// If the router is either not supported or doesn't require a special handler
+// one compliant with the net/http package will be returned.
+// Currently supported special-implementation routers:
+//   - *gin.Engine
+func (v *JWTValidator) Handler(router any) (any, error) {
+	switch router.(type) {
+	case *gin.Engine:
+		return v.gin, nil
+	default:
+		return v.stdlib, nil
+	}
+}
+
+func (v *JWTValidator) gin(c *gin.Context) {
 	// get the value of the authorization header
 	header := strings.TrimSpace(c.GetHeader("Authorization"))
 	if header == "" {
@@ -178,7 +199,7 @@ func (v *JWTValidator) GinHandler(c *gin.Context) {
 	c.Set(internal.KeySubject, credential.Subject())
 }
 
-func (v *JWTValidator) Handler(next http.Handler) http.Handler {
+func (v *JWTValidator) stdlib(next http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		header := strings.TrimSpace(r.Header.Get("Authorization"))
 		if header == "" {
