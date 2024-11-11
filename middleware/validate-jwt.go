@@ -24,6 +24,10 @@ var (
 	supportedSchemes = []string{"http", "https"}
 )
 
+type RevokedTokenProvider interface {
+	IsRevoked(string) bool
+}
+
 // JWTValidator enables the gin router and the stdlib to validate a JWT passed
 // in the request headers.
 // It expects the OAuth 2.0 Bearer Token scheme as Authorization method.
@@ -44,6 +48,9 @@ type JWTValidator struct {
 	// parserOptions contains the options used for parsing a JWT found in the
 	// request headers
 	parserOptions []jwt.ParseOption
+
+	// revokedTokenProvider
+	revokedTokenProvider interface{}
 }
 
 func (v *JWTValidator) AddParserOption(options ...jwt.ParseOption) {
@@ -126,24 +133,7 @@ func (v *JWTValidator) Configure(issuer string, jwksUri string, allowFaultyJWKSU
 	return nil
 }
 
-// Handler is used to emit the correct handler method for using the middleware
-// in requests.
-// To get the correct handler function, please pass the router you are using
-// as the router parameter.
-// If the router is either not supported or doesn't require a special handler
-// one compliant with the net/http package will be returned.
-// Currently supported special-implementation routers:
-//   - *gin.Engine
-func (v *JWTValidator) Handler(router any) (any, error) {
-	switch router.(type) {
-	case *gin.Engine:
-		return v.gin, nil
-	default:
-		return v.stdlib, nil
-	}
-}
-
-func (v *JWTValidator) gin(c *gin.Context) {
+func (v *JWTValidator) GinHandler(c *gin.Context) {
 	// get the value of the authorization header
 	header := strings.TrimSpace(c.GetHeader("Authorization"))
 	if header == "" {
@@ -199,7 +189,7 @@ func (v *JWTValidator) gin(c *gin.Context) {
 	c.Set(internal.KeySubject, credential.Subject())
 }
 
-func (v *JWTValidator) stdlib(next http.Handler) http.Handler {
+func (v *JWTValidator) Handler(next http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		header := strings.TrimSpace(r.Header.Get("Authorization"))
 		if header == "" {
