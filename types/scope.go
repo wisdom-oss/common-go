@@ -28,11 +28,11 @@ func (s Scope) String() string {
 
 func (s *Scope) Parse(input any) error {
 	var scope string
-	switch input.(type) {
+	switch val := input.(type) {
 	case string:
-		scope = input.(string)
+		scope = val
 	case []byte:
-		scope = string(input.([]byte))
+		scope = string(val)
 	default:
 		return errors.New("invalid input data type, expected []byte or string")
 	}
@@ -44,7 +44,7 @@ func (s *Scope) Parse(input any) error {
 		*s = ScopeWrite
 	case "delete":
 		*s = ScopeDelete
-	case "admin":
+	case "admin", "*":
 		*s = ScopeAdmin
 	default:
 		return errors.New("unknown scope passed as input")
