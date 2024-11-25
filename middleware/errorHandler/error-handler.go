@@ -1,4 +1,4 @@
-package middleware
+package errorHandler
 
 import (
 	"context"
@@ -53,7 +53,6 @@ func (h ErrorHandler) Handler(next http.Handler) http.Handler {
 				if p != nil {
 					if p == http.ErrAbortHandler {
 						panic(p)
-						return
 					}
 					panics = append(panics, p)
 				} else {
@@ -73,12 +72,12 @@ func (h ErrorHandler) Handler(next http.Handler) http.Handler {
 			var serviceErr *types.ServiceError
 			for len(errorInput) > 0 {
 				obj := <-errorInput
-				switch obj.(type) {
+				switch obj := obj.(type) {
 				case error:
-					errs = append(errs, obj.(error))
+					errs = append(errs, obj)
 				case types.ServiceError:
 					if serviceErr == nil {
-						err := obj.(types.ServiceError)
+						err := obj
 						serviceErr = &err
 					}
 				default:

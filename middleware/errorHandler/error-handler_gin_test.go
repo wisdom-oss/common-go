@@ -1,4 +1,4 @@
-package middleware
+package errorHandler
 
 import (
 	"encoding/json"
@@ -28,7 +28,7 @@ func Test_ErrorHandler_gin_NoError(t *testing.T) {
 	res := rec.Result()
 
 	assert.Equal(t, http.StatusOK, res.StatusCode)
-	assert.Equal(t, "success", string(rec.Body.Bytes()))
+	assert.Equal(t, "success", rec.Body.String())
 
 }
 
