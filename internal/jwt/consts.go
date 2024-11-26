@@ -1,4 +1,4 @@
-package validateJWT
+package jwt
 
 const KeyTokenValidated = "validated-token"
 const KeyPermissions = "permissions"

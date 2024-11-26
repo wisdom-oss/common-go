@@ -1,6 +1,6 @@
-package validateJWT
+package jwt
 
-import "github.com/wisdom-oss/common-go/v2/types"
+import "github.com/wisdom-oss/common-go/v3/types"
 
 // ErrMissingAuthorizationHeader is returned if the request did not contain
 // the `Authorization` header
@@ -99,4 +99,20 @@ var Forbidden = types.ServiceError{
 	Status: 403,
 	Title:  "Forbidden",
 	Detail: "Access to this resource is not allowed for your user. Please check that you have been assigned to the required scope: %s",
+}
+
+// ErrJWTMalformed is returned if the request did contain a JWT but is malformed
+var ErrJWTMissingRequiredClaim = types.ServiceError{
+	Type:   "https://www.rfc-editor.org/rfc/rfc9110#section-15.5.1",
+	Status: 400,
+	Title:  "JSON Web Token Required Claim Missing",
+	Detail: "The JSON Web Token is missing a required claim and therefore is invalid.",
+}
+
+// ErrJWTMalformed is returned if the request did contain a JWT but is malformed
+var ErrJWTInvalidAudience = types.ServiceError{
+	Type:   "https://www.rfc-editor.org/rfc/rfc9110#section-15.5.2",
+	Status: 401,
+	Title:  "JSON Web Token Invalid Audience",
+	Detail: "The JSON Web Token has been issued for a different target audience",
 }
