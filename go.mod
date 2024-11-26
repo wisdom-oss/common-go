@@ -1,4 +1,4 @@
-module github.com/wisdom-oss/common-go/v2
+module github.com/wisdom-oss/common-go/v3
 
 go 1.22.3
 
