@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/thanhpk/randstr"
 	"github.com/wisdom-oss/common-go/v3/middleware/jwt"
+	"github.com/wisdom-oss/common-go/v3/types"
 )
 
 var r *gin.Engine
@@ -58,8 +59,6 @@ func _missing_authorization_header(t *testing.T) {
 
 func _multiple_authorization_headers(t *testing.T) {
 	expectedError := jwt.ErrSingleAuthorizationHeaderOnly
-	expectedErrorBytes, err := json.Marshal(expectedError)
-	assert.NoError(t, err)
 
 	res := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/", nil)
@@ -68,17 +67,16 @@ func _multiple_authorization_headers(t *testing.T) {
 	req.Header.Add("Authorization", "header-3")
 	r.Handler().ServeHTTP(res, req)
 
-	bodyContents, err := io.ReadAll(res.Result().Body)
+	var receviedError types.ServiceError
+	err := json.NewDecoder(res.Body).Decode(&receviedError)
 	assert.NoError(t, err)
 
 	assert.Equal(t, int(expectedError.Status), res.Code)
-	assert.JSONEq(t, string(expectedErrorBytes), string(bodyContents))
+	assert.True(t, receviedError.Equals(expectedError))
 }
 
 func _unsupported_token_scheme(t *testing.T) {
 	expectedError := jwt.ErrUnsupportedTokenScheme
-	expectedErrorBytes, err := json.Marshal(expectedError)
-	assert.NoError(t, err)
 
 	addition := randstr.Base64(48)
 
@@ -87,17 +85,16 @@ func _unsupported_token_scheme(t *testing.T) {
 	req.Header.Add("Authorization", "Bearer"+addition)
 	r.Handler().ServeHTTP(res, req)
 
-	bodyContents, err := io.ReadAll(res.Result().Body)
+	var receviedError types.ServiceError
+	err := json.NewDecoder(res.Body).Decode(&receviedError)
 	assert.NoError(t, err)
 
 	assert.Equal(t, int(expectedError.Status), res.Code)
-	assert.JSONEq(t, string(expectedErrorBytes), string(bodyContents))
+	assert.True(t, receviedError.Equals(expectedError))
 }
 
 func _invalid_jwt(t *testing.T) {
 	expectedError := jwt.ErrJWTMalformed
-	expectedErrorBytes, err := json.Marshal(expectedError)
-	assert.NoError(t, err)
 
 	addition := randstr.Base64(48)
 
@@ -106,28 +103,34 @@ func _invalid_jwt(t *testing.T) {
 	req.Header.Add("Authorization", "Bearer "+addition)
 	r.Handler().ServeHTTP(res, req)
 
-	bodyContents, err := io.ReadAll(res.Result().Body)
+	var receviedError types.ServiceError
+	err := json.NewDecoder(res.Body).Decode(&receviedError)
 	assert.NoError(t, err)
 
 	assert.Equal(t, int(expectedError.Status), res.Code)
-	assert.JSONEq(t, string(expectedErrorBytes), string(bodyContents))
+	assert.True(t, receviedError.Equals(expectedError))
 }
 
 func _jwt_missing_sub_claim(t *testing.T) {
 	expectedError := jwt.ErrJWTMissingRequiredClaim
-	expectedErrorBytes, err := json.Marshal(expectedError)
-	assert.NoError(t, err)
 
-	
+	// TODO: Continue writing tests for checking missing required claims:
+	//   - sub
+	//   - scopes
+	//   - iat
+	//   - nbf
+	//   - iss
+	//   - aud
 
 	res := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/", nil)
-	req.Header.Add("Authorization", "Bearer "+)
+	req.Header.Add("Authorization", "Bearer ")
 	r.Handler().ServeHTTP(res, req)
 
-	bodyContents, err := io.ReadAll(res.Result().Body)
+	var receviedError types.ServiceError
+	err := json.NewDecoder(res.Body).Decode(&receviedError)
 	assert.NoError(t, err)
 
 	assert.Equal(t, int(expectedError.Status), res.Code)
-	assert.JSONEq(t, string(expectedErrorBytes), string(bodyContents))
+	assert.True(t, receviedError.Equals(expectedError))
 }
