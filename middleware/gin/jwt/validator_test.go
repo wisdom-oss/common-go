@@ -1,32 +1,31 @@
-//go:build wisdom_stdlib
-
-package jwt_test
+package jwt
 
 import (
 	"encoding/json"
 	"io"
-	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	jwt2 "github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/stretchr/testify/assert"
 	"github.com/thanhpk/randstr"
-	"github.com/wisdom-oss/common-go/v3/middleware/jwt"
+	"github.com/wisdom-oss/common-go/v3/internal/jwt"
 	"github.com/wisdom-oss/common-go/v3/types"
 )
 
-var r *http.ServeMux
+var r *gin.Engine
 var jwkTestingKey = []byte("testing-key")
 var key jwk.Key
 var keySet jwk.Set
-var v *jwt.Validator
+var v *Validator
 
-func handler(t *testing.T) {
-	r = http.NewServeMux()
+func Test(t *testing.T) {
+	r = gin.New()
+
 	var err error
 	key, err = jwk.FromRaw(jwkTestingKey)
 	assert.NoError(t, err)
@@ -38,16 +37,14 @@ func handler(t *testing.T) {
 	keySet = jwk.NewSet()
 	keySet.AddKey(key)
 
-	v = &jwt.Validator{}
+	v = &Validator{}
 	err = v.Configure("test", keySet, nil)
 	assert.NoError(t, err)
 
-	r.Handle("GET /", func() http.Handler {
-		nextFn := func(w http.ResponseWriter, r *http.Request) {
-			w.WriteHeader(200)
-		}
-		return v.Handler(http.HandlerFunc(nextFn))
-	}())
+	r.Use(v.Handler)
+	r.GET("/", func(ctx *gin.Context) {
+		ctx.Status(200)
+	})
 
 	t.Run("Missing_Authorization_Header", _missing_authorization_header)
 	t.Run("Multiple_Authoritazion_Headers", _multiple_authorization_headers)
@@ -65,7 +62,7 @@ func _missing_authorization_header(t *testing.T) {
 
 	res := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/", nil)
-	r.ServeHTTP(res, req)
+	r.Handler().ServeHTTP(res, req)
 
 	bodyContents, err := io.ReadAll(res.Result().Body)
 	assert.NoError(t, err)
@@ -82,7 +79,7 @@ func _multiple_authorization_headers(t *testing.T) {
 	req.Header.Add("Authorization", "header-1")
 	req.Header.Add("Authorization", "header-2")
 	req.Header.Add("Authorization", "header-3")
-	r.ServeHTTP(res, req)
+	r.Handler().ServeHTTP(res, req)
 
 	var receviedError types.ServiceError
 	err := json.NewDecoder(res.Body).Decode(&receviedError)
@@ -100,7 +97,7 @@ func _unsupported_token_scheme(t *testing.T) {
 	res := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/", nil)
 	req.Header.Add("Authorization", "Bearer"+addition)
-	r.ServeHTTP(res, req)
+	r.Handler().ServeHTTP(res, req)
 
 	var receviedError types.ServiceError
 	err := json.NewDecoder(res.Body).Decode(&receviedError)
@@ -118,7 +115,7 @@ func _invalid_jwt(t *testing.T) {
 	res := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/", nil)
 	req.Header.Add("Authorization", "Bearer "+addition)
-	r.ServeHTTP(res, req)
+	r.Handler().ServeHTTP(res, req)
 
 	var receviedError types.ServiceError
 	err := json.NewDecoder(res.Body).Decode(&receviedError)
@@ -159,7 +156,7 @@ func _jwt_missing_sub_claim(t *testing.T) {
 	res := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/", nil)
 	req.Header.Add("Authorization", "Bearer "+string(serializedToken))
-	r.ServeHTTP(res, req)
+	r.Handler().ServeHTTP(res, req)
 
 	var receviedError types.ServiceError
 	err = json.NewDecoder(res.Body).Decode(&receviedError)
@@ -196,7 +193,7 @@ func _jwt_missing_issued_at_claim(t *testing.T) {
 	res := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/", nil)
 	req.Header.Add("Authorization", "Bearer "+string(serializedToken))
-	r.ServeHTTP(res, req)
+	r.Handler().ServeHTTP(res, req)
 
 	var receviedError types.ServiceError
 	err = json.NewDecoder(res.Body).Decode(&receviedError)
@@ -233,7 +230,7 @@ func _jwt_missing_not_before_claim(t *testing.T) {
 	res := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/", nil)
 	req.Header.Add("Authorization", "Bearer "+string(serializedToken))
-	r.ServeHTTP(res, req)
+	r.Handler().ServeHTTP(res, req)
 
 	var receviedError types.ServiceError
 	err = json.NewDecoder(res.Body).Decode(&receviedError)
@@ -270,7 +267,7 @@ func _jwt_missing_issuer_claim(t *testing.T) {
 	res := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/", nil)
 	req.Header.Add("Authorization", "Bearer "+string(serializedToken))
-	r.ServeHTTP(res, req)
+	r.Handler().ServeHTTP(res, req)
 
 	var receviedError types.ServiceError
 	err = json.NewDecoder(res.Body).Decode(&receviedError)
@@ -307,7 +304,7 @@ func _jwt_missing_audience_claim(t *testing.T) {
 	res := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/", nil)
 	req.Header.Add("Authorization", "Bearer "+string(serializedToken))
-	r.ServeHTTP(res, req)
+	r.Handler().ServeHTTP(res, req)
 
 	var receviedError types.ServiceError
 	err = json.NewDecoder(res.Body).Decode(&receviedError)
@@ -345,7 +342,7 @@ func _jwt_missing_expiration_claim(t *testing.T) {
 	res := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/", nil)
 	req.Header.Add("Authorization", "Bearer "+string(serializedToken))
-	r.ServeHTTP(res, req)
+	r.Handler().ServeHTTP(res, req)
 
 	var receviedError types.ServiceError
 	err = json.NewDecoder(res.Body).Decode(&receviedError)
@@ -396,7 +393,7 @@ func _jwt_invalid_audience_claim(t *testing.T) {
 	res := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/", nil)
 	req.Header.Add("Authorization", "Bearer "+string(serializedToken))
-	r.ServeHTTP(res, req)
+	r.Handler().ServeHTTP(res, req)
 
 	var receviedError types.ServiceError
 	err = json.NewDecoder(res.Body).Decode(&receviedError)
@@ -435,7 +432,7 @@ func _jwt_invalid_issuer_claim(t *testing.T) {
 	res := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/", nil)
 	req.Header.Add("Authorization", "Bearer "+string(serializedToken))
-	r.ServeHTTP(res, req)
+	r.Handler().ServeHTTP(res, req)
 
 	var receviedError types.ServiceError
 	err = json.NewDecoder(res.Body).Decode(&receviedError)
@@ -474,7 +471,7 @@ func _jwt_invalid_expiration_claim(t *testing.T) {
 	res := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/", nil)
 	req.Header.Add("Authorization", "Bearer "+string(serializedToken))
-	r.ServeHTTP(res, req)
+	r.Handler().ServeHTTP(res, req)
 
 	var receviedError types.ServiceError
 	err = json.NewDecoder(res.Body).Decode(&receviedError)
@@ -513,7 +510,7 @@ func _jwt_invalid_issued_at_claim(t *testing.T) {
 	res := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/", nil)
 	req.Header.Add("Authorization", "Bearer "+string(serializedToken))
-	r.ServeHTTP(res, req)
+	r.Handler().ServeHTTP(res, req)
 
 	var receviedError types.ServiceError
 	err = json.NewDecoder(res.Body).Decode(&receviedError)
@@ -552,7 +549,7 @@ func _jwt_invalid_not_before_claim(t *testing.T) {
 	res := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/", nil)
 	req.Header.Add("Authorization", "Bearer "+string(serializedToken))
-	r.ServeHTTP(res, req)
+	r.Handler().ServeHTTP(res, req)
 
 	var receviedError types.ServiceError
 	err = json.NewDecoder(res.Body).Decode(&receviedError)

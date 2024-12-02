@@ -16,8 +16,6 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/wisdom-oss/common-go/v3/types"
-
-	errorHandler "github.com/wisdom-oss/common-go/v3/internal/error-handler"
 )
 
 type Validator struct {
@@ -39,20 +37,15 @@ var globalParserOptions = []jwt.ParseOption{
 	jwt.WithRequiredClaim(ScopesKey),
 }
 
-var tokenSchemeRegexCompiled *regexp.Regexp
+var TokenSchemeRegexCompiled *regexp.Regexp
 var ErrDiscoverFailure = errors.New("validator configuration discovery failure")
 var ErrIssuerEmtpy = errors.New("issuer empty")
 var ErrIssuerNotHTTP = errors.New("issuer unrequestable")
 
 const tokenSchemeRegex = `(?i)^Bearer .+$`
 
-const KeyTokenValidated = "jwt.validated"
-const KeyTokenPermissions = "jwt.permissions"
-const KeyTokenSubject = "jwt.subject"
-const KeyAdministrator = "jwt.administrator"
-
 func init() {
-	tokenSchemeRegexCompiled = regexp.MustCompile(tokenSchemeRegex)
+	TokenSchemeRegexCompiled = regexp.MustCompile(tokenSchemeRegex)
 }
 
 // Discover uses the OpenID Connect Discovery mecahnism to discover the
@@ -165,7 +158,7 @@ func (r *Validator) FetchKeys(ctx context.Context, sink jws.KeySink, sig *jws.Si
 // parseHTTPRequest parses the HTTP request for the token and returns the
 // accessToken. If an error occurrs the function returns an outputtable
 // *types.ServiceError
-func (v *Validator) parseHTTPRequest(r *http.Request) (accessToken jwt.Token, res *types.ServiceError) {
+func (v *Validator) ParseHTTPRequest(r *http.Request) (accessToken jwt.Token, res *types.ServiceError) {
 	parserOptions := v.parserOptions
 	for _, audience := range v.audiences {
 		parserOptions = append(parserOptions, jwt.WithAudience(audience))
@@ -198,7 +191,7 @@ func (v *Validator) parseHTTPRequest(r *http.Request) (accessToken jwt.Token, re
 		res.Errors = []error{err}
 		return nil, &res
 	default:
-		res = errorHandler.InternalError
+		res = InternalError
 		res.Errors = []error{err}
 		return nil, res
 	}

@@ -1,5 +1,3 @@
-//go:build !wisdom_stdlib
-
 package jwt
 
 import (
@@ -7,41 +5,45 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	internal "github.com/wisdom-oss/common-go/v3/internal/jwt"
+	"github.com/wisdom-oss/common-go/v3/internal/jwt"
 )
+
+type Validator struct {
+	jwt.Validator
+}
 
 func (r *Validator) Handler(c *gin.Context) {
 	headers := c.Request.Header["Authorization"]
 	switch {
 	case len(headers) == 0:
 		c.Abort()
-		ErrMissingAuthorizationHeader.Emit(c)
+		jwt.ErrMissingAuthorizationHeader.Emit(c)
 		return
 	case len(headers) > 1:
 		c.Abort()
-		ErrSingleAuthorizationHeaderOnly.Emit(c)
+		jwt.ErrSingleAuthorizationHeaderOnly.Emit(c)
 		return
 	}
 
 	val := strings.TrimSpace(headers[0])
-	if !tokenSchemeRegexCompiled.MatchString(val) {
+	if !jwt.TokenSchemeRegexCompiled.MatchString(val) {
 		c.Abort()
-		ErrUnsupportedTokenScheme.Emit(c)
+		jwt.ErrUnsupportedTokenScheme.Emit(c)
 		return
 	}
 
-	jwt, err := r.parseHTTPRequest(c.Request)
+	token, err := r.ParseHTTPRequest(c.Request)
 	if err != nil {
 		c.Abort()
 		err.Emit(c)
 		return
 	}
 
-	iface, _ := jwt.PrivateClaims()["scopes"]
+	iface := token.PrivateClaims()["scopes"]
 	ifaceArray, isArray := iface.([]any)
 	if !isArray {
 		c.Abort()
-		ErrJWTInvalidScopeType.Emit(c)
+		jwt.ErrJWTInvalidScopeType.Emit(c)
 		return
 	}
 	var scopes []string
@@ -49,7 +51,7 @@ func (r *Validator) Handler(c *gin.Context) {
 		scope, ok := s.(string)
 		if !ok {
 			c.Abort()
-			ErrJWTInvalidScopeType.Emit(c)
+			jwt.ErrJWTInvalidScopeType.Emit(c)
 			return
 		}
 		scopes = append(scopes, scope)
@@ -57,8 +59,8 @@ func (r *Validator) Handler(c *gin.Context) {
 
 	c.Set(KeyTokenValidated, true)
 	c.Set(KeyTokenPermissions, scopes)
-	c.Set(KeyTokenSubject, jwt.Subject())
-	c.Set(KeyAdministrator, slices.Contains(scopes, internal.ScopeAdministrator))
+	c.Set(KeyTokenSubject, token.Subject())
+	c.Set(KeyAdministrator, slices.Contains(scopes, jwt.ScopeAdministrator))
 
 	c.Next()
 }

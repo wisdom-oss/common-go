@@ -1,8 +1,10 @@
 package jwt
 
-const KeyTokenValidated = "validated-token"
-const KeyPermissions = "permissions"
-const KeyAdministrator = "administrator"
-const KeySubject = "subject"
+const KeyTokenValidated = "jwt.validated"
+const KeyTokenPermissions = "jwt.permissions"
+const KeyTokenSubject = "jwt.subject"
+const KeyAdministrator = "jwt.administrator"
 
 const ScopeAdministrator = "*:*"
+
+const ScopesKey = "scopes"

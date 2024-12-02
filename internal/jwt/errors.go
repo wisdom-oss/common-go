@@ -2,6 +2,13 @@ package jwt
 
 import "github.com/wisdom-oss/common-go/v3/types"
 
+var InternalError = &types.ServiceError{
+	Type:   "https://www.rfc-editor.org/rfc/rfc9110#section-15.6.1",
+	Status: 500,
+	Title:  "Internal Server Error",
+	Detail: "The service encountered an internal error during the handling of your request",
+}
+
 // ErrMissingAuthorizationHeader is returned if the request did not contain
 // the `Authorization` header
 var ErrMissingAuthorizationHeader = types.ServiceError{
