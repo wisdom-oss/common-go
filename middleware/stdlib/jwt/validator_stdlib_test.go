@@ -1,5 +1,3 @@
-//go:build wisdom_stdlib
-
 package jwt
 
 import (
