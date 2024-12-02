@@ -15,7 +15,7 @@ as well as error handling.
 To use this package, you need to install it into your project using the
 following command:
 ```shell
-go get github.com/wisdom-oss/common-go/v2
+go get github.com/wisdom-oss/common-go/v3
 ```
 
 Afterward you can import the desired module from 
