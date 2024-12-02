@@ -16,16 +16,16 @@ func (v *Validator) Handler(next http.Handler) http.Handler {
 		headers := r.Header["Authorization"]
 		switch {
 		case len(headers) == 0:
-			internal.ErrMissingAuthorizationHeader.Emit(w)
+			ErrMissingAuthorizationHeader.Emit(w)
 			return
 		case len(headers) > 1:
-			internal.ErrSingleAuthorizationHeaderOnly.Emit(w)
+			ErrSingleAuthorizationHeaderOnly.Emit(w)
 			return
 		}
 
 		val := strings.TrimSpace(headers[0])
 		if !tokenSchemeRegexCompiled.MatchString(val) {
-			internal.ErrUnsupportedTokenScheme.Emit(w)
+			ErrUnsupportedTokenScheme.Emit(w)
 			return
 		}
 
@@ -37,7 +37,7 @@ func (v *Validator) Handler(next http.Handler) http.Handler {
 
 		scopes, correctType := jwt.PrivateClaims()["scopes"].([]string)
 		if !correctType {
-			internal.ErrJWTMalformed.Emit(w)
+			ErrJWTMalformed.Emit(w)
 			return
 		}
 

@@ -25,11 +25,18 @@ type Validator struct {
 	jwksCache     *jwk.Cache
 	jwkSet        jwk.Set
 	parserOptions []jwt.ParseOption
+	audiences     []string
 }
 
 var globalParserOptions = []jwt.ParseOption{
 	jwt.WithAcceptableSkew(10 * time.Second),
-	jwt.WithRequiredClaim("scopes"),
+	jwt.WithRequiredClaim(jwt.SubjectKey),
+	jwt.WithRequiredClaim(jwt.IssuerKey),
+	jwt.WithRequiredClaim(jwt.IssuedAtKey),
+	jwt.WithRequiredClaim(jwt.NotBeforeKey),
+	jwt.WithRequiredClaim(jwt.AudienceKey),
+	jwt.WithRequiredClaim(jwt.ExpirationKey),
+	jwt.WithRequiredClaim(ScopesKey),
 }
 
 var tokenSchemeRegexCompiled *regexp.Regexp
@@ -127,6 +134,14 @@ func (r *Validator) Configure(issuer string, jwksSource any, parseOptions []jwk.
 	return err
 }
 
+func (v *Validator) RequireAudiences(aud []string) {
+	v.audiences = append(v.audiences, aud...)
+}
+
+func (v *Validator) DisableAudienceCheck() {
+	v.audiences = nil
+}
+
 func (r *Validator) configureJWKSCache(uri string) error {
 	if r.jwksCache == nil {
 		r.jwksCache = jwk.NewCache(context.Background())
@@ -151,7 +166,11 @@ func (r *Validator) FetchKeys(ctx context.Context, sink jws.KeySink, sig *jws.Si
 // accessToken. If an error occurrs the function returns an outputtable
 // *types.ServiceError
 func (v *Validator) parseHTTPRequest(r *http.Request) (accessToken jwt.Token, res *types.ServiceError) {
-	accessToken, err := jwt.ParseHeader(r.Header, "Authorization", v.parserOptions...)
+	parserOptions := v.parserOptions
+	for _, audience := range v.audiences {
+		parserOptions = append(parserOptions, jwt.WithAudience(audience))
+	}
+	accessToken, err := jwt.ParseHeader(r.Header, "Authorization", parserOptions...)
 	if err == nil {
 		return accessToken, nil
 	}
@@ -159,8 +178,7 @@ func (v *Validator) parseHTTPRequest(r *http.Request) (accessToken jwt.Token, re
 	switch {
 	case strings.HasPrefix(err.Error(), `empty header`):
 		return nil, &ErrMissingAuthorizationHeader
-	case errors.Is(err, jwt.ErrInvalidJWT()):
-		return nil, &ErrJWTMalformed
+
 	case errors.Is(err, jwt.ErrRequiredClaim()):
 		return nil, &ErrJWTMissingRequiredClaim
 	case errors.Is(err, jwt.ErrInvalidAudience()):
@@ -173,6 +191,12 @@ func (v *Validator) parseHTTPRequest(r *http.Request) (accessToken jwt.Token, re
 		return nil, &ErrJWTNotCreatedYet
 	case errors.Is(err, jwt.ErrInvalidIssuer()):
 		return nil, &ErrJWTInvalidIssuer
+	case jws.IsVerificationError(err):
+		panic("unable to verify jwt")
+	case errors.Is(err, jwt.ErrInvalidJWT()):
+		res := ErrJWTMalformed
+		res.Errors = []error{err}
+		return nil, &res
 	default:
 		res = errorHandler.InternalError
 		res.Errors = []error{err}

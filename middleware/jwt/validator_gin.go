@@ -10,7 +10,7 @@ import (
 	internal "github.com/wisdom-oss/common-go/v3/internal/jwt"
 )
 
-func (r Validator) Handler(c *gin.Context) {
+func (r *Validator) Handler(c *gin.Context) {
 	headers := c.Request.Header["Authorization"]
 	switch {
 	case len(headers) == 0:
@@ -37,11 +37,22 @@ func (r Validator) Handler(c *gin.Context) {
 		return
 	}
 
-	scopes, correctType := jwt.PrivateClaims()["scopes"].([]string)
-	if !correctType {
+	iface, _ := jwt.PrivateClaims()["scopes"]
+	ifaceArray, isArray := iface.([]any)
+	if !isArray {
 		c.Abort()
-		ErrJWTMalformed.Emit(c)
+		ErrJWTInvalidScopeType.Emit(c)
 		return
+	}
+	var scopes []string
+	for _, s := range ifaceArray {
+		scope, ok := s.(string)
+		if !ok {
+			c.Abort()
+			ErrJWTInvalidScopeType.Emit(c)
+			return
+		}
+		scopes = append(scopes, scope)
 	}
 
 	c.Set(KeyTokenValidated, true)

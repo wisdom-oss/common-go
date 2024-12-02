@@ -18,17 +18,15 @@ func Test_JWT_Validator(t *testing.T) {
 }
 
 func configuration(t *testing.T) {
-	t.Run("[AUTO] Empty_Issuer", _config_auto_empty_issuer)
-	t.Run("[AUTO] Non-HTTP_Issuer", _config_auto_non_http_issuer)
-	t.Run("[AUTO] Valid Issuer", _config_auto_valid_issuer)
-	t.Run("[MANUAL] JWKS_by_string", _config_manual_string_jwks)
-	t.Run("[MANUAL] JWKS_by_[]byte", _config_manual_byte_jwks)
-	t.Run("[MANUAL] JWKS_by_io.Reader", _config_manual_reader_jwks)
-	t.Run("[MANUAL] JWKS_by_jwk.Set", _config_manual_set_jwks)
-	t.Run("[MANUAL] Unsupported_JWKS_Input", _config_manual_unsupported_jwks_type)
-	t.Run("[MANUAL] Invalid_JWKS_Input_by_string", _config_manual_invalid_jwks_string)
-	t.Run("[MANUAL] Invalid_JWKS_Input_by_[]byte", _config_manual_invalid_jwks_byte)
-	t.Run("[MANUAL] Invalid_JWKS_Input_by_string", _config_manual_invalid_jwks_reader)
+	t.Run("Automatic", _automatic_configuration)
+	t.Run("Manual", _manual_configuration)
+}
+
+func _automatic_configuration(t *testing.T) {
+	t.Run("Empty_Issuer", _config_auto_empty_issuer)
+	t.Run("Non_HTTP_Issuer", _config_auto_non_http_issuer)
+	t.Run("Invalid_Issuer", _config_auto_invalid_issuer)
+	t.Run("Valid Issuer", _config_auto_valid_issuer)
 }
 
 func _config_auto_empty_issuer(t *testing.T) {
@@ -45,10 +43,26 @@ func _config_auto_non_http_issuer(t *testing.T) {
 	assert.ErrorAs(t, err, &jwt.ErrIssuerNotHTTP)
 }
 
+func _config_auto_invalid_issuer(t *testing.T) {
+	var v jwt.Validator
+	err := v.Discover("https://example.com/")
+	assert.ErrorAs(t, err, &jwt.ErrDiscoverFailure)
+}
+
 func _config_auto_valid_issuer(t *testing.T) {
 	var v jwt.Validator
 	err := v.Discover("https://samples.auth0.com/")
 	assert.NoError(t, err)
+}
+
+func _manual_configuration(t *testing.T) {
+	t.Run("JWKS_from_String", _config_manual_string_jwks)
+	t.Run("JWKS_from_[]byte", _config_manual_byte_jwks)
+	t.Run("JWKS_from_io.Reader", _config_manual_reader_jwks)
+	t.Run("JWKS_from_jwk.Set", _config_manual_set_jwks)
+	t.Run("Invalid_JWKS_from_String", _config_manual_invalid_jwks_string)
+	t.Run("Invalid_JWKS_from_[]byte", _config_manual_invalid_jwks_byte)
+	t.Run("Invalid_JWKS_from_io.Reader", _config_manual_invalid_jwks_reader)
 }
 
 func _config_manual_string_jwks(t *testing.T) {
