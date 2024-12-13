@@ -123,3 +123,12 @@ var ErrJWTInvalidAudience = types.ServiceError{
 	Title:  "JSON Web Token Invalid Audience",
 	Detail: "The JSON Web Token has been issued for a different target audience",
 }
+
+// ErrForbidden is a template error which should be used to deny requests but
+// allows for setting a detail message beforehand
+var ErrForbidden = types.ServiceError{
+	Type:   "https://www.rfc-editor.org/rfc/rfc9110#section-15.5.4",
+	Status: 403,
+	Title:  "Access Forbidden",
+	Detail: "You don't have the required permissions to access this resource",
+}

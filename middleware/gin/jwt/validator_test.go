@@ -3,56 +3,20 @@ package jwt
 import (
 	"encoding/json"
 	"io"
+	"net/http"
 	"net/http/httptest"
+	"slices"
 	"testing"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/lestrrat-go/jwx/v2/jwa"
-	"github.com/lestrrat-go/jwx/v2/jwk"
 	jwt2 "github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/stretchr/testify/assert"
 	"github.com/thanhpk/randstr"
 	"github.com/wisdom-oss/common-go/v3/internal/jwt"
 	"github.com/wisdom-oss/common-go/v3/types"
 )
-
-var r *gin.Engine
-var jwkTestingKey = []byte("testing-key")
-var key jwk.Key
-var keySet jwk.Set
-var v *Validator
-
-func Test(t *testing.T) {
-	r = gin.New()
-
-	var err error
-	key, err = jwk.FromRaw(jwkTestingKey)
-	assert.NoError(t, err)
-
-	jwk.AssignKeyID(key)
-	key.Set(jwk.KeyUsageKey, "sig")
-	key.Set(jwk.AlgorithmKey, jwa.HS256)
-
-	keySet = jwk.NewSet()
-	keySet.AddKey(key)
-
-	v = &Validator{}
-	err = v.Configure("test", keySet, nil)
-	assert.NoError(t, err)
-
-	r.Use(v.Handler)
-	r.GET("/", func(ctx *gin.Context) {
-		ctx.Status(200)
-	})
-
-	t.Run("Missing_Authorization_Header", _missing_authorization_header)
-	t.Run("Multiple_Authoritazion_Headers", _multiple_authorization_headers)
-	t.Run("Unsupported_Token_Scheme", _unsupported_token_scheme)
-	t.Run("Invalid_JWT", _invalid_jwt)
-	t.Run("Missing_Claims", _missing_jwt_claims)
-	t.Run("Invalid_Claims", _invalid_claim_values)
-}
 
 func _missing_authorization_header(t *testing.T) {
 
@@ -562,4 +526,152 @@ func _jwt_invalid_not_before_claim(t *testing.T) {
 		t.Logf("==== Received Error ====\n\n%v", receviedError)
 		t.Logf("==== Expected Error ====\n\n%v", expectedError)
 	}
+}
+
+func _jwt_empty_scopes(t *testing.T) {
+
+	b := jwt2.NewBuilder()
+	b.Subject(randstr.Base62(512))
+	b.NotBefore(time.Now().Add(-5 * time.Minute))
+	b.IssuedAt(time.Now())
+	b.Issuer("test")
+	b.Audience([]string{"correct-audience"})
+	b.Expiration(time.Now().Add(5 * time.Minute))
+	b.Claim("scopes", []string{})
+
+	token, err := b.Build()
+	assert.NoError(t, err)
+
+	s := jwt2.NewSerializer()
+	s.Sign(jwt2.WithKey(jwa.HS256, key))
+
+	serializedToken, err := s.Serialize(token)
+	assert.NoError(t, err)
+
+	res := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/", nil)
+	req.Header.Add("Authorization", "Bearer "+string(serializedToken))
+	r.Handler().ServeHTTP(res, req)
+
+	assert.Equal(t, http.StatusOK, res.Code)
+	if t.Failed() {
+		t.Logf("==== Received Error ====\n\n%s", res.Body.String())
+	}
+
+}
+
+func _jwt_valid(t *testing.T) {
+	b := jwt2.NewBuilder()
+	b.Subject(randstr.Base62(512))
+	b.NotBefore(time.Now().Add(-1 * time.Minute))
+	b.IssuedAt(time.Now())
+	b.Issuer("test")
+	b.Audience([]string{"correct-audience"})
+	b.Expiration(time.Now().Add(5 * time.Minute))
+	b.Claim("scopes", []string{"testing"})
+
+	token, err := b.Build()
+	assert.NoError(t, err)
+
+	s := jwt2.NewSerializer()
+	s.Sign(jwt2.WithKey(jwa.HS256, key))
+
+	serializedToken, err := s.Serialize(token)
+	assert.NoError(t, err)
+
+	res := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/", nil)
+	req.Header.Add("Authorization", "Bearer "+string(serializedToken))
+	r.Use(func(c *gin.Context) {
+		c.Next()
+
+		tokenValidated := c.GetBool(KeyTokenValidated)
+		if !tokenValidated {
+			t.Fatal("token not set as validated in request context")
+		}
+
+		permissions := c.GetStringSlice(KeyTokenPermissions)
+		if permissions == nil {
+			t.Fatal("token permissions not set in request context")
+		}
+
+		if !slices.Contains(permissions, "testing") {
+			t.Fatal("expected scope 'testing' not in permission array")
+		}
+
+		subject := c.GetString(KeyTokenSubject)
+		if subject != token.Subject() {
+			t.Fatalf("token subject in context ('%s') does not match the one set in the token ('%s')", subject, token.Subject())
+		}
+
+		isAdministrator := c.GetBool(KeyAdministrator)
+		if isAdministrator {
+			t.Fatalf("token marked as administrative token in context, even though not set in token")
+		}
+
+	})
+	r.Handler().ServeHTTP(res, req)
+
+	assert.Equal(t, http.StatusOK, res.Code)
+
+}
+
+func _jwt_admin_valid(t *testing.T) {
+	b := jwt2.NewBuilder()
+	b.Subject(randstr.Base62(512))
+	b.NotBefore(time.Now().Add(-1 * time.Minute))
+	b.IssuedAt(time.Now())
+	b.Issuer("test")
+	b.Audience([]string{"correct-audience"})
+	b.Expiration(time.Now().Add(5 * time.Minute))
+	b.Claim("scopes", []string{"testing", "*:*"})
+
+	token, err := b.Build()
+	assert.NoError(t, err)
+
+	s := jwt2.NewSerializer()
+	s.Sign(jwt2.WithKey(jwa.HS256, key))
+
+	serializedToken, err := s.Serialize(token)
+	assert.NoError(t, err)
+
+	res := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/", nil)
+	req.Header.Add("Authorization", "Bearer "+string(serializedToken))
+	r.Use(func(c *gin.Context) {
+		c.Next()
+
+		tokenValidated := c.GetBool(KeyTokenValidated)
+		if !tokenValidated {
+			t.Fatal("token not set as validated in request context")
+		}
+
+		permissions := c.GetStringSlice(KeyTokenPermissions)
+		if permissions == nil {
+			t.Fatal("token permissions not set in request context")
+		}
+
+		if !slices.Contains(permissions, "testing") {
+			t.Fatalf("expected scope 'testing' not in permission array (%v)", permissions)
+		}
+
+		if !slices.Contains(permissions, "*:*") {
+			t.Fatalf("expected scope '*:*' not in permission array (%v)", permissions)
+		}
+
+		subject := c.GetString(KeyTokenSubject)
+		if subject != token.Subject() {
+			t.Fatalf("token subject in context ('%s') does not match the one set in the token ('%s')", subject, token.Subject())
+		}
+
+		isAdministrator := c.GetBool(KeyAdministrator)
+		if !isAdministrator {
+			t.Fatalf("token not marked as administrative token in context, even though set in token")
+		}
+
+	})
+	r.Handler().ServeHTTP(res, req)
+
+	assert.Equal(t, http.StatusOK, res.Code)
+
 }
