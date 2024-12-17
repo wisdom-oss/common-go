@@ -132,3 +132,5 @@ var ErrForbidden = types.ServiceError{
 	Title:  "Access Forbidden",
 	Detail: "You don't have the required permissions to access this resource",
 }
+
+var ErrNoOp = types.ServiceError{}

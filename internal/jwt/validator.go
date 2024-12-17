@@ -187,7 +187,7 @@ func (v *Validator) ParseHTTPRequest(r *http.Request) (accessToken jwt.Token, re
 		return nil, &ErrJWTInvalidIssuer
 	case jws.IsVerificationError(err):
 		if v.IsOptional() {
-			return nil, nil
+			return nil, &ErrNoOp
 		}
 		panic("unable to verify jwt")
 	case errors.Is(err, jwt.ErrInvalidJWT()):
