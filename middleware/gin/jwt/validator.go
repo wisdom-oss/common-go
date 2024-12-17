@@ -16,10 +16,18 @@ func (r *Validator) Handler(c *gin.Context) {
 	headers := c.Request.Header["Authorization"]
 	switch {
 	case len(headers) == 0:
+		if r.IsOptional() {
+			c.Next()
+			return
+		}
 		c.Abort()
 		jwt.ErrMissingAuthorizationHeader.Emit(c)
 		return
 	case len(headers) > 1:
+		if r.IsOptional() {
+			c.Next()
+			return
+		}
 		c.Abort()
 		jwt.ErrSingleAuthorizationHeaderOnly.Emit(c)
 		return
@@ -27,6 +35,10 @@ func (r *Validator) Handler(c *gin.Context) {
 
 	val := strings.TrimSpace(headers[0])
 	if !jwt.TokenSchemeRegexCompiled.MatchString(val) {
+		if r.IsOptional() {
+			c.Next()
+			return
+		}
 		c.Abort()
 		jwt.ErrUnsupportedTokenScheme.Emit(c)
 		return
@@ -34,6 +46,10 @@ func (r *Validator) Handler(c *gin.Context) {
 
 	token, err := r.ParseHTTPRequest(c.Request)
 	if err != nil {
+		if r.IsOptional() {
+			c.Next()
+			return
+		}
 		c.Abort()
 		err.Emit(c)
 		return
@@ -42,6 +58,10 @@ func (r *Validator) Handler(c *gin.Context) {
 	iface := token.PrivateClaims()["scopes"]
 	ifaceArray, isArray := iface.([]any)
 	if !isArray {
+		if r.IsOptional() {
+			c.Next()
+			return
+		}
 		c.Abort()
 		jwt.ErrJWTInvalidScopeType.Emit(c)
 		return
@@ -50,6 +70,10 @@ func (r *Validator) Handler(c *gin.Context) {
 	for _, s := range ifaceArray {
 		scope, ok := s.(string)
 		if !ok {
+			if r.IsOptional() {
+				c.Next()
+				return
+			}
 			c.Abort()
 			jwt.ErrJWTInvalidScopeType.Emit(c)
 			return

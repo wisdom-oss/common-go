@@ -24,6 +24,7 @@ type Validator struct {
 	jwkSet        jwk.Set
 	parserOptions []jwt.ParseOption
 	audiences     []string
+	optional      bool
 }
 
 var globalParserOptions = []jwt.ParseOption{
@@ -195,4 +196,20 @@ func (v *Validator) ParseHTTPRequest(r *http.Request) (accessToken jwt.Token, re
 		res.Errors = []error{err}
 		return nil, res
 	}
+}
+
+// EnableOptional allows the validator to run optional and ignore all errors
+// that appear and still let the request pass
+func (r *Validator) EnableOptional() {
+	r.optional = true
+}
+
+// DisableOptional forces the validator to run in the default mode and only
+// let requests pass that are not optional
+func (r *Validator) DisableOptional() {
+	r.optional = false
+}
+
+func (r *Validator) IsOptional() bool {
+	return r.optional
 }
