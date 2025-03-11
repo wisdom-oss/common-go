@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+
 	"github.com/wisdom-oss/common-go/v3/internal/jwt"
 )
 
@@ -66,8 +67,8 @@ func (r *Validator) Handler(c *gin.Context) {
 		jwt.ErrJWTInvalidScopeType.Emit(c)
 		return
 	}
-	var scopes []string
-	for _, s := range ifaceArray {
+	scopes := make([]string, len(ifaceArray))
+	for idx, s := range ifaceArray {
 		scope, ok := s.(string)
 		if !ok {
 			if r.IsOptional() {
@@ -78,7 +79,7 @@ func (r *Validator) Handler(c *gin.Context) {
 			jwt.ErrJWTInvalidScopeType.Emit(c)
 			return
 		}
-		scopes = append(scopes, scope)
+		scopes[idx] = scope
 	}
 
 	c.Set(KeyTokenValidated, true)
