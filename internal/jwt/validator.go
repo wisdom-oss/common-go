@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -15,8 +14,11 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
+
 	"github.com/wisdom-oss/common-go/v3/types"
 )
+
+const acceptableSkewSeconds = 10
 
 type Validator struct {
 	issuer        string
@@ -28,10 +30,9 @@ type Validator struct {
 }
 
 var globalParserOptions = []jwt.ParseOption{
-	jwt.WithAcceptableSkew(10 * time.Second),
+	jwt.WithAcceptableSkew(acceptableSkewSeconds * time.Second),
 	jwt.WithRequiredClaim(jwt.SubjectKey),
 	jwt.WithRequiredClaim(jwt.IssuerKey),
-	jwt.WithRequiredClaim(jwt.IssuedAtKey),
 	jwt.WithRequiredClaim(jwt.NotBeforeKey),
 	jwt.WithRequiredClaim(jwt.AudienceKey),
 	jwt.WithRequiredClaim(jwt.ExpirationKey),
@@ -43,7 +44,7 @@ var ErrDiscoverFailure = errors.New("validator configuration discovery failure")
 var ErrIssuerEmtpy = errors.New("issuer empty")
 var ErrIssuerNotHTTP = errors.New("issuer unrequestable")
 
-const tokenSchemeRegex = `(?i)^Bearer .+$`
+const tokenSchemeRegex = `(?i)^Bearer .+$` //nolint:gosec
 
 func init() {
 	TokenSchemeRegexCompiled = regexp.MustCompile(tokenSchemeRegex)
@@ -61,8 +62,8 @@ func (r *Validator) Discover(issuer string) error {
 		return errors.Join(ErrDiscoverFailure, ErrIssuerNotHTTP, err)
 	}
 
-	discoveryUri := fmt.Sprintf("%s.well-known/openid-configuration", uri.String())
-	res, err := http.Get(discoveryUri)
+	discoveryUri := uri.String() + ".well-known/openid-configuration"
+	res, err := http.Get(discoveryUri) //nolint:gosec
 	if err != nil {
 		return errors.Join(ErrDiscoverFailure, err)
 	}
@@ -84,7 +85,7 @@ func (r *Validator) Discover(issuer string) error {
 
 	r.parserOptions = []jwt.ParseOption{
 		jwt.WithIssuer(r.issuer),
-		jwt.WithKeyProvider(r),
+		jwt.WithKeySet(r.jwkSet),
 	}
 	r.parserOptions = append(r.parserOptions, globalParserOptions...)
 
@@ -93,18 +94,7 @@ func (r *Validator) Discover(issuer string) error {
 
 var ErrUnsupportedManualJWKS = errors.New("unsupported jwks source type")
 
-// Configure allows the manual configuration of the issuer and JWKS
-//
-// Please note that specifying a uri will not work with this function as it only
-// accepts already retrieved data. The supported types for jwksSource are:
-//   - jwk.Set
-//   - io.Reader
-//   - []byte
-//   - string
-//
-// The parseOptions parameter allows configuring the parsing of the jwksSource,
-// except when the actual type of jwksSource is jwk.Set as this will be a
-// direct assignment of the supplied value
+// direct assignment of the supplied value.
 func (r *Validator) Configure(issuer string, jwksSource any, parseOptions []jwk.ParseOption) (err error) {
 	r.issuer = issuer
 
@@ -139,6 +129,14 @@ func (v *Validator) DisableAudienceCheck() {
 func (r *Validator) configureJWKSCache(uri string) error {
 	if r.jwksCache == nil {
 		r.jwksCache = jwk.NewCache(context.Background())
+		err := r.jwksCache.Register(uri)
+		if err != nil {
+			return err
+		}
+		_, err = r.jwksCache.Refresh(context.Background(), uri)
+		if err != nil {
+			return err
+		}
 	}
 
 	r.jwkSet = jwk.NewCachedSet(r.jwksCache, uri)
@@ -156,9 +154,7 @@ func (r *Validator) FetchKeys(ctx context.Context, sink jws.KeySink, sig *jws.Si
 	return nil
 }
 
-// parseHTTPRequest parses the HTTP request for the token and returns the
-// accessToken. If an error occurrs the function returns an outputtable
-// *types.ServiceError
+// *types.ServiceError.
 func (v *Validator) ParseHTTPRequest(r *http.Request) (accessToken jwt.Token, res *types.ServiceError) {
 	parserOptions := v.parserOptions
 	for _, audience := range v.audiences {
@@ -201,14 +197,12 @@ func (v *Validator) ParseHTTPRequest(r *http.Request) (accessToken jwt.Token, re
 	}
 }
 
-// EnableOptional allows the validator to run optional and ignore all errors
-// that appear and still let the request pass
+// that appear and still let the request pass.
 func (r *Validator) EnableOptional() {
 	r.optional = true
 }
 
-// DisableOptional forces the validator to run in the default mode and only
-// let requests pass that are not optional
+// let requests pass that are not optional.
 func (r *Validator) DisableOptional() {
 	r.optional = false
 }
