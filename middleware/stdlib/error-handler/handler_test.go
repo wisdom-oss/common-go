@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
 	errorHandler "github.com/wisdom-oss/common-go/v3/middleware/stdlib/error-handler"
 	"github.com/wisdom-oss/common-go/v3/types"
 )
@@ -53,7 +54,7 @@ func _recover_panic(t *testing.T) {
 	r.ServeHTTP(rec, req)
 	res := rec.Result()
 
-	assert.Equal(t, int(expectedError.Status), res.StatusCode)
+	assert.Equal(t, int(expectedError.Status), res.StatusCode) //nolint:gosec
 
 	var receviedError types.ServiceError
 	err := json.NewDecoder(res.Body).Decode(&receviedError)
@@ -79,7 +80,7 @@ func _native_error(t *testing.T) {
 	r.ServeHTTP(rec, req)
 	res := rec.Result()
 
-	assert.Equal(t, int(expectedError.Status), res.StatusCode)
+	assert.Equal(t, int(expectedError.Status), res.StatusCode) //nolint:gosec
 
 	var receviedError types.ServiceError
 	err := json.NewDecoder(res.Body).Decode(&receviedError)
@@ -105,7 +106,7 @@ func _service_error(t *testing.T) {
 	r.ServeHTTP(rec, req)
 	res := rec.Result()
 
-	assert.Equal(t, int(expectedError.Status), res.StatusCode)
+	assert.Equal(t, int(expectedError.Status), res.StatusCode) //nolint:gosec
 
 	var receviedError types.ServiceError
 	err := json.NewDecoder(res.Body).Decode(&receviedError)
@@ -130,7 +131,7 @@ func _invalid_type(t *testing.T) {
 	r.ServeHTTP(rec, req)
 	res := rec.Result()
 
-	assert.Equal(t, int(expectedError.Status), res.StatusCode)
+	assert.Equal(t, int(expectedError.Status), res.StatusCode) //nolint:gosec
 
 	var receviedError types.ServiceError
 	err := json.NewDecoder(res.Body).Decode(&receviedError)

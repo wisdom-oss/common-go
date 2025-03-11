@@ -22,7 +22,7 @@ func Handler(next http.Handler) http.Handler {
 			for {
 				p := recover()
 				if p != nil {
-					if p == http.ErrAbortHandler {
+					if p == http.ErrAbortHandler { //nolint:errorlint
 						panic(p)
 					}
 					panics = append(panics, p)

@@ -1,3 +1,4 @@
+// nolint
 package jwt
 
 import (
@@ -9,12 +10,13 @@ import (
 
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwt"
-	jwt2 "github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/stretchr/testify/assert"
 	"github.com/thanhpk/randstr"
-	"github.com/wisdom-oss/common-go/v3/types"
+
+	jwt2 "github.com/lestrrat-go/jwx/v2/jwt"
 
 	internal "github.com/wisdom-oss/common-go/v3/internal/jwt"
+	"github.com/wisdom-oss/common-go/v3/types"
 )
 
 const scopePrefix = "testing"

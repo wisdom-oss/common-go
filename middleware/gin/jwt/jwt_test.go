@@ -1,3 +1,4 @@
+// nolint
 package jwt
 
 import (
@@ -23,12 +24,12 @@ func Test(t *testing.T) {
 	key, err = jwk.FromRaw(jwkTestingKey)
 	assert.NoError(t, err)
 
-	jwk.AssignKeyID(key)
-	key.Set(jwk.KeyUsageKey, "sig")
-	key.Set(jwk.AlgorithmKey, jwa.HS256)
+	jwk.AssignKeyID(key)                 //nolint:errcheck
+	key.Set(jwk.KeyUsageKey, "sig")      //nolint:errcheck
+	key.Set(jwk.AlgorithmKey, jwa.HS256) //nolint:errcheck
 
 	keySet = jwk.NewSet()
-	keySet.AddKey(key)
+	keySet.AddKey(key) //nolint:errcheck
 
 	v = &Validator{}
 	err = v.Configure("test", keySet, nil)

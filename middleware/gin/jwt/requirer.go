@@ -5,6 +5,7 @@ import (
 	"slices"
 
 	"github.com/gin-gonic/gin"
+
 	"github.com/wisdom-oss/common-go/v3/internal/jwt"
 	"github.com/wisdom-oss/common-go/v3/types"
 )

@@ -1,3 +1,4 @@
+// nolint
 package jwt
 
 import (
@@ -10,9 +11,11 @@ import (
 
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
-	jwt2 "github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/stretchr/testify/assert"
 	"github.com/thanhpk/randstr"
+
+	jwt2 "github.com/lestrrat-go/jwx/v2/jwt"
+
 	"github.com/wisdom-oss/common-go/v3/internal/jwt"
 	"github.com/wisdom-oss/common-go/v3/types"
 )

@@ -8,6 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
+
 	errorHandler "github.com/wisdom-oss/common-go/v3/middleware/gin/error-handler"
 )
 

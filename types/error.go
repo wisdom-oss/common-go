@@ -2,6 +2,7 @@ package types
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -11,7 +12,7 @@ import (
 	"github.com/iancoleman/strcase"
 )
 
-// ErrorContentType is used as the media type when sending an error response
+// ErrorContentType is used as the media type when sending an error response.
 const ErrorContentType = "application/problem+json; charset=utf-8"
 
 const tagFormattingString = `tag:%s,%s:%s:%d`
@@ -61,8 +62,7 @@ type ServiceError struct {
 	Host string
 }
 
-// SetInstance generates a URI of the TAG format containing a unique identifier
-// for this error and assigns it to the Instance field
+// for this error and assigns it to the Instance field.
 func (se *ServiceError) SetInstance() error {
 	if se.Host == "" {
 		hostname, err := os.Hostname()
@@ -76,19 +76,13 @@ func (se *ServiceError) SetInstance() error {
 	return nil
 }
 
-// Emit allows sending the error contained as a response.
-//
-// The emitter may currently be one of the following types:
-//   - http.ResponseWriter
-//   - *gin.Context
-//
-// If an unknown or unsupported emitter is supplied, the function will panic
+// If an unknown or unsupported emitter is supplied, the function will panic.
 func (se ServiceError) Emit(emitter any) {
-	switch emitter.(type) {
+	switch emitter := emitter.(type) {
 	case http.ResponseWriter:
-		se.emit_responseWriter(emitter.(http.ResponseWriter))
+		se.emit_responseWriter(emitter)
 	case *gin.Context:
-		se.emit_gin(emitter.(*gin.Context))
+		se.emit_gin(emitter)
 	default:
 		panic(fmt.Sprintf("unknown error emitter. expected one of: http.ResponseWriter, *gin.Context. got: %T", emitter))
 	}
@@ -96,7 +90,7 @@ func (se ServiceError) Emit(emitter any) {
 
 func (se *ServiceError) emit_responseWriter(w http.ResponseWriter) {
 	w.Header().Set("Content-Type", ErrorContentType)
-	w.WriteHeader(int(se.Status))
+	w.WriteHeader(int(se.Status)) //nolint:gosec
 
 	err := json.NewEncoder(w).Encode(se)
 	if err != nil {
@@ -106,10 +100,10 @@ func (se *ServiceError) emit_responseWriter(w http.ResponseWriter) {
 
 func (se *ServiceError) emit_gin(c *gin.Context) {
 	c.Header("Content-Type", ErrorContentType)
-	c.JSON(int(se.Status), se)
+	c.JSON(int(se.Status), se) //nolint:gosec
 }
 
-// MarshalJSON is used to change the serialization of the Errors
+// MarshalJSON is used to change the serialization of the Errors.
 func (se ServiceError) MarshalJSON() ([]byte, error) {
 	_ = se.SetInstance()
 	se.Host, _ = os.Hostname()
@@ -123,7 +117,7 @@ func (se ServiceError) MarshalJSON() ([]byte, error) {
 		Host     string   `json:"host"`
 	}{
 		Type:     se.Type,
-		Status:   int(se.Status),
+		Status:   int(se.Status), //nolint:gosec
 		Title:    se.Title,
 		Detail:   se.Detail,
 		Instance: se.Instance,
@@ -149,16 +143,16 @@ func (se *ServiceError) UnmarshalJSON(src []byte) error {
 	if err != nil {
 		return err
 	}
-	var errors []error
-	for _, err := range input.Errors {
-		errors = append(errors, fmt.Errorf(err))
+	errs := make([]error, len(input.Errors))
+	for idx, err := range input.Errors {
+		errs[idx] = errors.New(err)
 	}
 	*se = ServiceError{
 		Type:     input.Type,
-		Status:   uint(input.Status),
+		Status:   uint(input.Status), //nolint:gosec
 		Title:    input.Title,
 		Detail:   input.Detail,
-		Errors:   errors,
+		Errors:   errs,
 		Host:     input.Host,
 		Instance: input.Instance,
 	}
