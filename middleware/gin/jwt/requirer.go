@@ -33,7 +33,9 @@ func (sr *ScopeRequirer) require(scope types.Scope, c *gin.Context) {
 
 	if !slices.Contains(scopes, requiredScope) {
 		c.Abort()
-		jwt.ErrForbidden.Emit(c)
+		err := jwt.ErrForbidden
+		err.Detail = fmt.Sprintf(err.Detail, requiredScope)
+		err.Emit(c)
 		return
 	}
 
